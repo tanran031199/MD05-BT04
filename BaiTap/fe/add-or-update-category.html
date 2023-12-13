@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Document</title>
+  </head>
+
+  <body>
+    <div
+      class="bg-[url('https://wallpaperboat.com/wp-content/uploads/2020/06/04/42814/leaf-03.jpg')] bg-no-repeat bg-cover w-screen min-h-screen bg-zinc-300 flex justify-center"
+    >
+      <div class="pt-[100px] w-[500px]">
+        <form
+          id="category-form"
+          class="w-full bg-black/70 rounded-lg overflow-hidden"
+        >
+          <div
+            class="flex justify-center items-center h-[80px] text-3xl text-white font-semibold bg-amber-700/50"
+          >
+            <h1>Thêm mới danh mục</h1>
+            <h1>Sửa danh mục</h1>
+          </div>
+
+          <input type="hidden" name="id" />
+
+          <div class="px-[50px] py-[20px] flex flex-col justify-start">
+            <div class="flex flex-col gap-[8px] mb-[15px]">
+              <label class="text-white font-semibold" for="name"
+                >Tên danh mục</label
+              >
+
+              <input
+                id="name"
+                name="categoryName"
+                type="text"
+                placeholder="Tên danh mục..."
+                class="py-[5px] px-[10px] rounded-md outline-none"
+              />
+            </div>
+
+            <div class="flex flex-col gap-[8px] mb-[15px]">
+              <p class="text-white font-semibold">Trạng thái</p>
+
+              <div class="flex items-center gap-[20px]">
+                <p>
+                  <input
+                    checked="true"
+                    name="status"
+                    value="true"
+                    id="active"
+                    type="radio"
+                  />
+                  <label class="text-white font-semibold" for="active"
+                    >Mở</label
+                  >
+                </p>
+                <p>
+                  <input
+                    name="status"
+                    value="false"
+                    id="un-active"
+                    type="radio"
+                  />
+                  <label class="text-white font-semibold" for="un-active"
+                    >Đóng</label
+                  >
+                </p>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-[8px] mb-[15px]">
+              <label class="text-white font-semibold" for="parent"
+                >Danh mục cha</label
+              >
+              <select
+                name="parent"
+                id="parent"
+                class="text-center rounded-md outline-none w-[200px] py-[5px]"
+              ></select>
+            </div>
+
+            <div class="flex justify-end">
+              <button
+                type="submit"
+                class="inline-block py-[8px] px-[15px] bg-amber-700 rounded-lg font-semibold text-white m-[15px] hover:bg-amber-800"
+              >
+                Thêm mới
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="node_modules/axios/dist/axios.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="module">
+      const BASE_URL_CATEGORY = "http://localhost:8080/category";
+
+      const form = document.querySelector("#category-form");
+      const submitBtn = form.querySelector("button[type=submit]");
+      const categoryId = new URL(window.location.href).searchParams.get("id");
+
+      // CALL API
+      const getAllCategory = async () => {
+        try {
+          const res = await axios.get(BASE_URL_CATEGORY);
+
+          return res?.data || [];
+        } catch (err) {
+          console.log(err);
+        }
+      };
+
+      const getDetailCategory = async (id) => {
+        try {
+          const res = await axios.get(`${BASE_URL_CATEGORY}/${id}`);
+
+          return res?.data || {};
+        } catch (err) {
+          console.log(err);
+        }
+      };
+
+      const addNewCate = async (category) => {
+        const res = await axios.post(
+          `${BASE_URL_CATEGORY}/save-cate`,
+          category
+        );
+
+        return res?.data || {};
+      };
+
+      const updateCate = async (category, categoryId) => {
+        const res = await axios.put(
+          `${BASE_URL_CATEGORY}/update-cate/${categoryId}`,
+          category
+        );
+
+        return res?.data || {};
+      };
+
+      // RENDER
+      getAllCategory().then((res) => {
+        const categoryName = form.querySelector("[name=categoryName]");
+        const select = form.querySelector("[name=parent]");
+        const statusRadios = form.querySelectorAll("[name=status]");
+        const status = form.querySelectorAll("[name=status]:checked");
+
+        let html = "";
+
+        if (res.length > 0) {
+          res.forEach((e) => {
+            html += `<option value="${e.id}">${e.categoryName}</option>`;
+          });
+
+          select.innerHTML = `<option value="0">Chọn danh mục</option>
+              ${html}`;
+        } else {
+          select.innerHTML = `<option value="0">Chưa có danh mục nào</option>`;
+        }
+
+        if (categoryId) {
+          submitBtn.innerText = "Sửa";
+          getDetailCategory(categoryId).then((res) => {
+            statusRadios.forEach((e) => {
+              if (e.value === res.status.toString()) {
+                e.checked = true;
+              }
+            });
+            categoryName.value = res.categoryName;
+            status.value = res.status;
+            parent.value = res.parent ? res.parent.id : 0;
+          });
+        }
+      });
+
+      // FUNCTION
+      const handleSubmit = (e) => {
+        e.preventDefault();
+
+        const categoryName = form.querySelector("[name=categoryName]");
+        const parent = form.querySelector("[name=parent]");
+        const status = form.querySelector("[name=status]:checked");
+
+        const category = {
+          categoryName: categoryName.value,
+          status: status.value,
+          parent: { id: parent.value },
+        };
+
+        if (categoryId) {
+          updateCate(category, categoryId)
+            .then((res) => {
+              Swal.fire({
+                position: "top-center",
+                icon: "success",
+                title: "Cập nhật thành công",
+                showConfirmButton: false,
+                timer: 1500,
+              });
+
+              setTimeout(() => {
+                window.location.href = "category.html";
+              }, 1500);
+            })
+            .catch((err) => {
+              Swal.fire({
+                position: "top-center",
+                icon: "error",
+                title: "Cập nhật thất bại",
+                showConfirmButton: false,
+                timer: 1500,
+              });
+            });
+        } else {
+          addNewCate(category)
+            .then((res) => {
+              Swal.fire({
+                position: "top-center",
+                icon: "success",
+                title: "Thêm mới thành công",
+                showConfirmButton: false,
+                timer: 1500,
+              });
+
+              setTimeout(() => {
+                window.location.href = "category.html";
+              }, 1500);
+            })
+            .catch((err) => {
+              Swal.fire({
+                position: "top-center",
+                icon: "success",
+                title: "Thêm mới thất bại",
+                showConfirmButton: false,
+                timer: 1500,
+              });
+            });
+        }
+      };
+
+      // EVENTS
+      form.addEventListener("submit", handleSubmit);
+    </script>
+  </body>
+</html>
